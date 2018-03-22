@@ -3,17 +3,13 @@
 # Wrapper for dns::record to set an MX record.
 #
 define dns::record::mx (
-  $zone,
-  $data,
+  String $zone,
+  String $data,
   $ttl        = '',
-  $preference = 10,
-  $host       = '@' ) {
+  Integer $preference = 10,
+  String $host       = '@' ) {
 
   $alias = "${name},${zone},MX,${preference},${data}"
-
-  validate_string($zone)
-  validate_string($data)
-  validate_string($host)
 
   if !is_domain_name($zone) or $zone =~ /^[0-9\.]+$/ {
     fail("Define[dns::record::mx]: MX zone ${zone} must be a valid domain name.")

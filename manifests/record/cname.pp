@@ -3,10 +3,10 @@
 # Wrapper for dns::record to set a CNAME
 #
 define dns::record::cname (
-  $zone,
-  $data,
+  String $zone,
+  String $data,
   $ttl = '',
-  $host = $name) {
+  String $host = $name) {
 
   $alias = "${name},CNAME,${zone}"
 

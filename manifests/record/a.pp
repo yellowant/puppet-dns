@@ -4,11 +4,11 @@
 # also setting a PTR at the same time.
 #
 define dns::record::a (
-  $zone,
-  $data,
+  String $zone,
+  String $data,
   $ttl = '',
   $ptr = false,
-  $host = $name ) {
+  String $host = $name ) {
 
   $alias = "${name},A,${zone}"
 

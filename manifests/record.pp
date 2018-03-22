@@ -3,14 +3,14 @@
 # This is a private class to arbitary dns records.
 #
 define dns::record (
-  $zone,
-  $host,
-  $data,
-  $record = 'A',
-  $dns_class = 'IN',
-  $ttl = '',
+  String $zone,
+  String $host,
+  String $data,
+  String $record = 'A',
+  String $dns_class = 'IN',
+  Variant[Integer, Enum[""]] $ttl = '',
   $preference = false,
-  $order = 9,
+  Integer $order = 9,
   $data_dir = $::dns::server::params::data_dir,
 ) {
 

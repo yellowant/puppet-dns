@@ -16,13 +16,10 @@
 #
 define dns::acl (
   $ensure = present,
-  $aclname = $name,
-  $data = [],
+  String $aclname = $name,
+  Array[String] $data = [],
 ) {
   include dns::server::params
-
-  validate_string($aclname)
-  validate_array($data)
 
   concat::fragment { "named.conf.local.acl.${name}.include":
     target  => "${dns::server::params::cfg_dir}/named.conf.local",

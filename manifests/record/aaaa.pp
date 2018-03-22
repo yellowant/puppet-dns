@@ -3,10 +3,10 @@
 # Wrapper of dns::record to set AAAA records
 #
 define dns::record::aaaa (
-  $zone,
-  $data,
+  String $zone,
+  String $data,
   $ttl = '',
-  $host = $name ) {
+  String $host = $name ) {
 
   $alias = "${name},AAAA,${zone}"
 
