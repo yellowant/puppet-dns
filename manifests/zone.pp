@@ -153,6 +153,13 @@
 #   *allow_forwarder* and *forward_policy* to be set).
 #   Defaults to `master`.
 #
+class dns::dnssec {
+  file{'/etc/bind/dnssec-keys/':
+    mode => "700",
+    owner => "root",
+    ensure => "directory"
+  }
+}
 define dns::zone (
   $soa = $::fqdn,
   $soa_email = "root.${::fqdn}",
@@ -175,6 +182,7 @@ define dns::zone (
   Array[String] $also_notify = [],
   $ensure = present,
   $data_dir = $::dns::server::params::data_dir,
+  Boolean $dnssec = false,
 ) {
 
   $cfg_dir = $dns::server::params::cfg_dir
@@ -225,8 +233,54 @@ define dns::zone (
       false   => inline_template('<%= Time.now.to_i %>'),
       default => $serial
     }
+    if $dnssec {
+      include dns::dnssec
+      file{"/etc/bind/dnssec-keys/zsk-${zone}/":
+        ensure => directory
+      } ~>
+      exec{"gen-zsk-${zone}":
+        command => '/usr/sbin/dnssec-keygen -3 $domain',
+        cwd => "/etc/bind/dnssec-keys/zsk-${zone}/",
+        refreshonly => true,
+        environment => ["domain=${zone}"]
+      }
+      file{"/etc/bind/dnssec-keys/ksk-${zone}/":
+        ensure => directory
+      } ~>
+      exec{"gen-ksk-${zone}":
+        command => '/usr/sbin/dnssec-keygen -3 -fk $domain',
+        cwd => "/etc/bind/dnssec-keys/ksk-${zone}/",
+        refreshonly => true,
+        environment => ["domain=${zone}"]
+      }
+      exec{"mix-zone-${zone}":
+        require => [Exec["gen-zsk-${zone}"], Exec["gen-ksk-${zone}"]],
+        command => '/bin/cat -- "$zf" /etc/bind/dnssec-keys/*sk-$domain/*.key > "$zf.mixed"',
+        provider => shell,
+        user        => "root",
+        cwd => "/etc/bind/dnssec-keys/ksk-${zone}/",
+        refreshonly => true,
+        environment => ["domain=${zone}", "zf=$zone_file_stage"],
+        subscribe => Concat[$zone_file_stage],
+        notify => Exec["bump-${zone}-serial"]
+      }
+      exec{"sign-zone-${zone}":
+        command => '/usr/sbin/dnssec-signzone -o "$domain" -f "$zfo" "$zf" /etc/bind/dnssec-keys/ksk-$domain/*.private  /etc/bind/dnssec-keys/zsk-$domain/*.private',
+        refreshonly => true,
+        provider    => shell,
+        user        => "root",
+        environment => ["domain=${zone}", "zf=${zone_file}.unsigned", "zfo=${zone_file}"],
+        subscribe   => Exec["bump-${zone}-serial"],
+        notify      => Class['dns::server::service']
+      }
+      $zone_staged = "${zone_file_stage}.mixed"
+      $zone_stage_out = "${zone_file}.unsigned"
+    } else {
+      $zone_staged = $zone_file_stage
+      $zone_stage_out = $zone_file
+    }
     exec { "bump-${zone}-serial":
-      command     => "sed '8s/_SERIAL_/${zone_serial}/' ${zone_file_stage} > ${zone_file}",
+      command     => "sed '8s/_SERIAL_/${zone_serial}/' ${zone_staged} > ${zone_stage_out}",
       path        => ['/bin', '/sbin', '/usr/bin', '/usr/sbin'],
       refreshonly => true,
       provider    => posix,

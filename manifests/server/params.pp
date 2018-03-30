@@ -23,7 +23,7 @@ class dns::server::params {
           $necessary_packages = ['bind9']
         }
         default: {
-          $necessary_packages = [ 'bind9', 'dnssec-tools' ]
+          $necessary_packages = [ 'bind9' ]
         }
       }
     }
