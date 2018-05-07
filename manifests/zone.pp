@@ -175,11 +175,11 @@ define dns::zone (
   Array[Stdlib::IP::Address] $allow_transfer = [],
   Array[Stdlib::IP::Address] $allow_forwarder = [],
   Array[Stdlib::IP::Address] $allow_query =[],
-  Array[Stdlib::IP::Address] $allow_update =[],
+  Array[String] $allow_update =[],
   Enum['first', 'only'] $forward_policy = 'first',
   $slave_masters = undef,
   Variant[Enum['yes', 'no', 'explicit', 'master-only'], Undef] $zone_notify = undef,
-  Array[String] $also_notify = [],
+  Array[Stdlib::IP::Address] $also_notify = [],
   $ensure = present,
   $data_dir = $::dns::server::params::data_dir,
   Boolean $dnssec = false,
@@ -259,13 +259,15 @@ define dns::zone (
         provider => shell,
         user        => "root",
         cwd => "/etc/bind/dnssec-keys/ksk-${zone}/",
-        refreshonly => true,
+        unless      => 'find "$zf.mixed" -not -mtime +20 | grep .',
         environment => ["domain=${zone}", "zf=$zone_file_stage"],
         subscribe => Concat[$zone_file_stage],
         notify => Exec["bump-${zone}-serial"]
       }
+      # Current settings resign if older than 20 days (see resource above) and sign for 30 days (default from command below)
       exec{"sign-zone-${zone}":
         command => '/usr/sbin/dnssec-signzone -o "$domain" -f "$zfo" "$zf" /etc/bind/dnssec-keys/ksk-$domain/*.private  /etc/bind/dnssec-keys/zsk-$domain/*.private',
+        cwd => "/etc/bind/dnssec-keys/ksk-${zone}/",
         refreshonly => true,
         provider    => shell,
         user        => "root",
