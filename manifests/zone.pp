@@ -253,13 +253,20 @@ define dns::zone (
         refreshonly => true,
         environment => ["domain=${zone}"]
       }
+      exec{"zone-old-${zone}":
+        command => '/bin/true',
+        provider => shell,
+        unless      => 'find "$zf.mixed" -not -mtime +20 | grep .',
+        environment => ["domain=${zone}", "zf=$zone_file_stage"],
+        notify => Exec["mix-zone-${zone}"]
+      }
       exec{"mix-zone-${zone}":
         require => [Exec["gen-zsk-${zone}"], Exec["gen-ksk-${zone}"]],
         command => '/bin/cat -- "$zf" /etc/bind/dnssec-keys/*sk-$domain/*.key > "$zf.mixed"',
         provider => shell,
         user        => "root",
         cwd => "/etc/bind/dnssec-keys/ksk-${zone}/",
-        unless      => 'find "$zf.mixed" -not -mtime +20 | grep .',
+        refreshonly => true,
         environment => ["domain=${zone}", "zf=$zone_file_stage"],
         subscribe => Concat[$zone_file_stage],
         notify => Exec["bump-${zone}-serial"]
