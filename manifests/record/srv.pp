@@ -4,22 +4,27 @@
 #
 define dns::record::srv (
   $zone,
-  $service,
-  $pri,
-  $weight,
-  $port,
-  $target,
-  $proto = 'tcp',
+  String $host = '@',
+  String $service,
+  Integer $pri,
+  Integer $weight,
+  Integer $port,
+  String $target,
+  Enum['tcp', 'udp'] $proto = 'tcp',
   $ttl = '',
 ) {
 
   $alias = "${service}:${proto}@${target}:${port},${pri},${weight},SRV,${zone}"
 
-  $host = "_${service}._${proto}.${zone}."
+  if($host == '@'){
+    $host2 = "_${service}._${proto}"
+  }else{
+    $host2 = "_${service}._${proto}.${host}"
+  }
 
   dns::record { $alias:
     zone   => $zone,
-    host   => $host,
+    host   => $host2,
     ttl    => $ttl,
     record => 'SRV',
     data   => "${pri}\t${weight}\t${port}\t${target}"

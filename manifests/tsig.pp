@@ -21,14 +21,12 @@ define dns::tsig (
   $keyname   = $name,
   $algorithm = 'hmac-md5',
   $server    = undef,
-  $secret    = undef,
-  $ensure    = present
+  $secret    = undef
 ) {
 
   $cfg_dir   = $dns::server::params::cfg_dir # Used in a template
 
   concat::fragment { "named.conf.local.tsig.${name}.include":
-    ensure  => $ensure,
     target  => "${cfg_dir}/named.conf.local",
     order   => 4,
     content => template("${module_name}/tsig.erb"),
