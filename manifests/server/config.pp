@@ -45,7 +45,7 @@ class dns::server::config (
   concat { "${cfg_dir}/named.conf.local":
     owner  => $owner,
     group  => $group,
-    mode   => '0644',
+    mode   => '0640',
     notify => Class['dns::server::service']
   }
 
