@@ -8,7 +8,7 @@ define dns::record (
   String $data,
   String $record = 'A',
   String $dns_class = 'IN',
-  Variant[Integer, Enum[""]] $ttl = '',
+  Variant[Integer, Enum[""], Pattern[/^[0-9SsMmHhDdWw]+$/]] $ttl = '',
   $preference = false,
   Integer $order = 9,
   $data_dir = $::dns::server::params::data_dir,
@@ -16,9 +16,9 @@ define dns::record (
 
   $zone_file_stage = "${data_dir}/db.${zone}.stage"
 
-  if $ttl !~ /^[0-9SsMmHhDdWw]+$/ and $ttl != '' {
-    fail("Define[dns::record]: TTL ${ttl} must be an integer within 0-2147483647 or explicitly specified time units, e.g. 1h30m.")
-  }
+  #if $ttl !~ /^[0-9SsMmHhDdWw]+$/ and $ttl != '' {
+  #  fail("Define[dns::record]: TTL ${ttl} must be an integer within 0-2147483647 or explicitly specified time units, e.g. 1h30m.")
+  #}
 
   if is_integer($ttl) and !(($ttl + 0) >= 0 and ($ttl+ 0) <= 2147483647) {
     fail("Define[dns::record]: TTL ${ttl} must be an integer within 0-2147483647 or explicitly specified time units, e.g. 1h30m.")

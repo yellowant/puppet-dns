@@ -153,13 +153,6 @@
 #   *allow_forwarder* and *forward_policy* to be set).
 #   Defaults to `master`.
 #
-class dns::dnssec {
-  file{'/etc/bind/dnssec-keys/':
-    mode => "700",
-    owner => "root",
-    ensure => "directory"
-  }
-}
 define dns::zone (
   $soa = $::fqdn,
   $soa_email = "root.${::fqdn}",
@@ -256,17 +249,27 @@ define dns::zone (
       exec{"zone-old-${zone}":
         command => '/bin/true',
         provider => shell,
-        unless      => 'find "$zf.mixed" -not -mtime +20 | grep .',
-        environment => ["domain=${zone}", "zf=$zone_file_stage"],
-        notify => Exec["mix-zone-${zone}"]
+        unless      => 'find "$zf.unsigned" -not -mtime +20 | grep .',
+        environment => ["domain=${zone}", "zf=$zone_file"],
+        notify => Exec["bump-${zone}-serial"]
       }
       exec{"mix-zone-${zone}":
-        require => [Exec["gen-zsk-${zone}"], Exec["gen-ksk-${zone}"]],
+        require => [Exec["gen-zsk-${zone}"], Exec["gen-ksk-${zone}"], Concat[$zone_file_stage]],
         command => '/bin/cat -- "$zf" /etc/bind/dnssec-keys/*sk-$domain/*.key > "$zf.mixed"',
         provider => shell,
         user        => "root",
         cwd => "/etc/bind/dnssec-keys/ksk-${zone}/",
+        creates => "${zone_file_stage}.mixed",
+        environment => ["domain=${zone}", "zf=$zone_file_stage"],
+        notify => Exec["bump-${zone}-serial"]
+      }
+      exec{"re-mix-zone-${zone}":
+        require => [Exec["gen-zsk-${zone}"], Exec["gen-ksk-${zone}"]],
+        command => '/bin/cat -- "$zf" /etc/bind/dnssec-keys/*sk-$domain/*.key > "$zf.mixed"',
+        provider => shell,
+        user        => "root",
         refreshonly => true,
+        cwd => "/etc/bind/dnssec-keys/ksk-${zone}/",
         environment => ["domain=${zone}", "zf=$zone_file_stage"],
         subscribe => Concat[$zone_file_stage],
         notify => Exec["bump-${zone}-serial"]
@@ -287,6 +290,9 @@ define dns::zone (
     } else {
       $zone_staged = $zone_file_stage
       $zone_stage_out = $zone_file
+      file{"${zone_file}.unsigned":
+        ensure => absent
+      }
     }
     exec { "bump-${zone}-serial":
       command     => "sed '8s/_SERIAL_/${zone_serial}/' ${zone_staged} > ${zone_stage_out}",
